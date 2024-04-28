@@ -29,7 +29,9 @@ func (r Registration) WebsiteCategories() []string {
 
 // SupportedDataSources returns the supported Data Sources supported by this Service
 func (r Registration) SupportedDataSources() map[string]*pluginsdk.Resource {
-	return map[string]*pluginsdk.Resource{}
+	return map[string]*pluginsdk.Resource{
+		"azuread_group_role_management_policy": groupRoleManagementPolicyDataSource(),
+	}
 }
 
 // SupportedResources returns the supported Resources supported by this Service
