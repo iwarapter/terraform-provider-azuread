@@ -24,7 +24,7 @@ resource "azuread_group" "example" {
 
 data "azuread_group_role_management_policy" "owners_policy" {
   group_id = azuread_group.example.id
-  role_id = "owner"
+  role_id  = "owner"
 }
 ```
 
