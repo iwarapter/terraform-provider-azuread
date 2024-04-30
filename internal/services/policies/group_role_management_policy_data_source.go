@@ -70,7 +70,7 @@ func (r GroupRoleManagementPolicyDataSource) Read() sdk.ResourceFunc {
 
 			groupID := metadata.ResourceData.Get("group_id").(string)
 			roleID := metadata.ResourceData.Get("role_id").(string)
-			id, err := getPolicyId(ctx, sdk.ResourceMetaData{Client: metadata.Client}, groupID, roleID)
+			id, err := getPolicyId(ctx, metadata, groupID, roleID)
 			if err != nil {
 				return errors.New("Bad API response")
 			}
