@@ -82,7 +82,6 @@ type AttributeParameterModel struct {
 	Type       types.String `tfsdk:"type"`
 }
 
-// Ensure the implementation satisfies the expected interfaces.
 var (
 	_ resource.Resource                = &SynchronizationJobSchemaResource{}
 	_ resource.ResourceWithConfigure   = &SynchronizationJobSchemaResource{}
@@ -93,7 +92,6 @@ func NewSynchronizationJobSchemaResource() resource.Resource {
 	return &SynchronizationJobSchemaResource{}
 }
 
-// Configure adds the client configured client to the resource.
 func (r *SynchronizationJobSchemaResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -134,7 +132,6 @@ func (r *SynchronizationJobSchemaResource) Schema(ctx context.Context, req resou
 							Optional:    true,
 							Computed:    true,
 							PlanModifiers: []planmodifier.String{
-								//stringplanmodifier.UseStateForUnknown(),
 								stringplanmodifier.RequiresReplace(),
 							},
 						},
@@ -305,7 +302,6 @@ func (r *SynchronizationJobSchemaResource) Create(ctx context.Context, req resou
 		return
 	}
 
-	// Expand the schema data
 	schemaData := expandSynchronizationJobSchema(ctx, data, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -320,16 +316,14 @@ func (r *SynchronizationJobSchemaResource) Create(ctx context.Context, req resou
 	schemaData.Directories = getSchema.Model.Directories
 	(*schemaData.SynchronizationRules)[0].Id = (*getSchema.Model.SynchronizationRules)[0].Id
 
-	// Create the schema
 	_, err = client.UpdateSynchronizationJobSchema(ctx, *synchronizationJobId, schemaData, synchronizationjobschema.DefaultUpdateSynchronizationJobSchemaOperationOptions())
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating synchronization job schema", fmt.Sprintf("Unable to create synchronization job schema: %s", err))
 		return
 	}
 
-	// Set the ID
 	data.Id = types.StringValue(synchronizationJobId.ID())
-	data.SynchronizationRules = flattenSynchronizationRules(ctx, schemaData.SynchronizationRules, &resp.Diagnostics)
+	data.SynchronizationRules = flattenSynchronizationRules(schemaData.SynchronizationRules)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -364,7 +358,6 @@ func (r *SynchronizationJobSchemaResource) Read(ctx context.Context, req resourc
 		return
 	}
 
-	// Get the schema
 	schemaResp, err := client.GetSynchronizationJobSchema(ctx, *synchronizationJobId, synchronizationjobschema.DefaultGetSynchronizationJobSchemaOperationOptions())
 	if err != nil {
 		if response.WasNotFound(schemaResp.HttpResponse) {
@@ -381,10 +374,9 @@ func (r *SynchronizationJobSchemaResource) Read(ctx context.Context, req resourc
 		return
 	}
 
-	// Flatten the schema data
 	data.Id = types.StringValue(synchronizationJobId.ID())
 	data.SynchronizationJobId = types.StringValue(synchronizationJobId.ID())
-	data.SynchronizationRules = flattenSynchronizationRules(ctx, schemaResp.Model.SynchronizationRules, &resp.Diagnostics)
+	data.SynchronizationRules = flattenSynchronizationRules(schemaResp.Model.SynchronizationRules)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
@@ -416,7 +408,6 @@ func (r *SynchronizationJobSchemaResource) Update(ctx context.Context, req resou
 		return
 	}
 
-	// Expand the schema data
 	schemaData := expandSynchronizationJobSchema(ctx, data, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -431,15 +422,12 @@ func (r *SynchronizationJobSchemaResource) Update(ctx context.Context, req resou
 	schemaData.Directories = getSchema.Model.Directories
 	(*schemaData.SynchronizationRules)[0].Id = (*getSchema.Model.SynchronizationRules)[0].Id
 
-	// Update the schema
 	_, err = client.UpdateSynchronizationJobSchema(ctx, *synchronizationJobId, schemaData, synchronizationjobschema.DefaultUpdateSynchronizationJobSchemaOperationOptions())
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating synchronization job schema", fmt.Sprintf("Unable to update synchronization job schema: %s", err))
 		return
 	}
-	// Set the ID
-	//data.Id = types.StringValue(synchronizationJobId.ID())
-	data.SynchronizationRules = flattenSynchronizationRules(ctx, schemaData.SynchronizationRules, &resp.Diagnostics)
+	data.SynchronizationRules = flattenSynchronizationRules(schemaData.SynchronizationRules)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -474,7 +462,6 @@ func (r *SynchronizationJobSchemaResource) Delete(ctx context.Context, req resou
 		return
 	}
 
-	// Delete the schema
 	_, err = client.DeleteSynchronizationJobSchema(ctx, *synchronizationJobId, synchronizationjobschema.DefaultDeleteSynchronizationJobSchemaOperationOptions())
 	if err != nil {
 		resp.Diagnostics.AddError("Error deleting synchronization job schema", fmt.Sprintf("Unable to delete synchronization job schema: %s", err))
@@ -482,51 +469,10 @@ func (r *SynchronizationJobSchemaResource) Delete(ctx context.Context, req resou
 	}
 }
 
-// Expand functions to convert from Terraform data to API models
 func expandSynchronizationJobSchema(ctx context.Context, data SynchronizationJobSchemaResourceModel, diags *diag.Diagnostics) stable.SynchronizationSchema {
-	schema := stable.SynchronizationSchema{
-		//Directories:          expandDirectories(ctx, data, diags),
+	return stable.SynchronizationSchema{
 		SynchronizationRules: expandSynchronizationRules(ctx, data, diags),
 	}
-	return schema
-}
-
-func expandDirectories(ctx context.Context, data SynchronizationJobSchemaResourceModel, diags *diag.Diagnostics) *[]stable.DirectoryDefinition {
-	if data.SynchronizationRules.IsNull() || data.SynchronizationRules.IsUnknown() {
-		return nil
-	}
-
-	var rules []SynchronizationRuleModel
-	diags.Append(data.SynchronizationRules.ElementsAs(ctx, &rules, false)...)
-	if diags.HasError() {
-		return nil
-	}
-
-	directories := make([]stable.DirectoryDefinition, 0)
-	seen := make(map[string]bool)
-
-	for _, rule := range rules {
-		sourceDir := rule.SourceDirectoryName.ValueString()
-		targetDir := rule.TargetDirectoryName.ValueString()
-
-		// Add source directory if not seen
-		if !seen[sourceDir] {
-			directories = append(directories, stable.DirectoryDefinition{
-				Name: nullable.Value(sourceDir),
-			})
-			seen[sourceDir] = true
-		}
-
-		// Add target directory if not seen
-		if !seen[targetDir] {
-			directories = append(directories, stable.DirectoryDefinition{
-				Name: nullable.Value(targetDir),
-			})
-			seen[targetDir] = true
-		}
-	}
-
-	return &directories
 }
 
 func expandSynchronizationRules(ctx context.Context, data SynchronizationJobSchemaResourceModel, diags *diag.Diagnostics) *[]stable.SynchronizationRule {
@@ -690,7 +636,6 @@ func expandParameters(ctx context.Context, parameters types.List, diags *diag.Di
 		}
 
 		if param.Value != nil {
-			//paramPair.Value = expandSource(ctx, *param.Value, diags)
 			src := &stable.AttributeMappingSource{}
 			if !param.Value.Type.IsNull() && !param.Value.Type.IsUnknown() {
 				sourceType := stable.AttributeMappingSourceType(param.Value.Type.ValueString())
@@ -712,8 +657,7 @@ func expandParameters(ctx context.Context, parameters types.List, diags *diag.Di
 	return &paramPairs
 }
 
-// Flatten functions to convert from API models to Terraform data
-func flattenSynchronizationRules(ctx context.Context, rules *[]stable.SynchronizationRule, diags *diag.Diagnostics) types.List {
+func flattenSynchronizationRules(rules *[]stable.SynchronizationRule) types.List {
 	if rules == nil || len(*rules) == 0 {
 		return types.ListNull(types.ObjectType{
 			AttrTypes: map[string]attr.Type{
@@ -779,7 +723,7 @@ func flattenSynchronizationRules(ctx context.Context, rules *[]stable.Synchroniz
 		}
 
 		if rule.ObjectMappings != nil {
-			flattenedRule["object_mapping"] = flattenObjectMappings(ctx, rule.ObjectMappings, diags)
+			flattenedRule["object_mapping"] = flattenObjectMappings(rule.ObjectMappings)
 		} else {
 			flattenedRule["object_mapping"] = types.ListNull(types.ObjectType{
 				AttrTypes: map[string]attr.Type{
@@ -921,7 +865,7 @@ func flattenSynchronizationRules(ctx context.Context, rules *[]stable.Synchroniz
 	)
 }
 
-func flattenObjectMappings(ctx context.Context, mappings *[]stable.ObjectMapping, diags *diag.Diagnostics) types.List {
+func flattenObjectMappings(mappings *[]stable.ObjectMapping) types.List {
 	if mappings == nil || len(*mappings) == 0 {
 		return types.ListNull(types.ObjectType{})
 	}
@@ -943,7 +887,7 @@ func flattenObjectMappings(ctx context.Context, mappings *[]stable.ObjectMapping
 		}
 
 		if mapping.AttributeMappings != nil {
-			flattenedMapping["attribute"] = flattenAttributes(ctx, mapping.AttributeMappings, diags)
+			flattenedMapping["attribute"] = flattenAttributes(mapping.AttributeMappings)
 		} else {
 			flattenedMapping["attribute"] = types.ListNull(types.ObjectType{
 				AttrTypes: map[string]attr.Type{
@@ -1060,7 +1004,7 @@ func flattenObjectMappings(ctx context.Context, mappings *[]stable.ObjectMapping
 	)
 }
 
-func flattenAttributes(ctx context.Context, attributes *[]stable.AttributeMapping, diags *diag.Diagnostics) types.List {
+func flattenAttributes(attributes *[]stable.AttributeMapping) types.List {
 	if attributes == nil || len(*attributes) == 0 {
 		return types.ListNull(types.ObjectType{})
 	}
@@ -1108,7 +1052,7 @@ func flattenAttributes(ctx context.Context, attributes *[]stable.AttributeMappin
 		}
 
 		if attribute.Source != nil {
-			flattenedAttr["source"] = flattenSource(ctx, attribute.Source, diags)
+			flattenedAttr["source"] = flattenSource(attribute.Source)
 		} else {
 			flattenedAttr["source"] = types.ObjectNull(map[string]attr.Type{
 				"expression": types.StringType,
@@ -1195,7 +1139,7 @@ func flattenAttributes(ctx context.Context, attributes *[]stable.AttributeMappin
 	)
 }
 
-func flattenParameters(ctx context.Context, parameters *[]stable.StringKeyAttributeMappingSourceValuePair, diags *diag.Diagnostics) types.List {
+func flattenParameters(parameters *[]stable.StringKeyAttributeMappingSourceValuePair) types.List {
 	if parameters == nil || len(*parameters) == 0 {
 		return types.ListNull(types.ObjectType{
 			AttrTypes: map[string]attr.Type{
@@ -1282,7 +1226,7 @@ func flattenParameters(ctx context.Context, parameters *[]stable.StringKeyAttrib
 	)
 }
 
-func flattenSource(ctx context.Context, source *stable.AttributeMappingSource, diags *diag.Diagnostics) types.Object {
+func flattenSource(source *stable.AttributeMappingSource) types.Object {
 	if source == nil {
 		return types.ObjectNull(map[string]attr.Type{
 			"expression": types.StringType,
@@ -1324,7 +1268,7 @@ func flattenSource(ctx context.Context, source *stable.AttributeMappingSource, d
 	}
 
 	if source.Parameters != nil {
-		flattenedSource["parameters"] = flattenParameters(ctx, source.Parameters, diags)
+		flattenedSource["parameters"] = flattenParameters(source.Parameters)
 	} else {
 		flattenedSource["parameters"] = types.ListNull(types.ObjectType{
 			AttrTypes: map[string]attr.Type{
