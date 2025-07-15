@@ -4,6 +4,9 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+
 	"github.com/hashicorp/go-azure-sdk/sdk/auth"
 	"github.com/hashicorp/go-azure-sdk/sdk/environments"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -11,8 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-provider-azuread/internal/clients"
 	"github.com/hashicorp/terraform-provider-azuread/internal/services/synchronization"
-	"os"
-	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -284,7 +285,6 @@ func (p *adProvider) Configure(ctx context.Context, req provider.ConfigureReques
 
 	resp.ResourceData = p.client
 	resp.DataSourceData = p.client
-	return
 }
 
 func buildClient(ctx context.Context, req provider.ConfigureRequest, authConfig *auth.Credentials, partnerId string) (*clients.Client, error) {
@@ -446,9 +446,7 @@ func (p *adProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *p
 				Optional: true,
 				//ValidateFunc: validation.Any(validation.IsUUID, validation.StringIsEmpty),
 				//DefaultFunc:  pluginsdk.EnvDefaultFunc("ARM_PARTNER_ID", ""),
-				Validators: []validator.String{
-					//stringsva
-				},
+				Validators:  []validator.String{},
 				Description: "A GUID/UUID that is registered with Microsoft to facilitate partner resource usage attribution",
 			},
 

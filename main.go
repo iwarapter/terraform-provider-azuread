@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"flag"
+
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
@@ -13,8 +14,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-mux/tf6muxserver"
 	"github.com/hashicorp/terraform-provider-azuread/internal/framework"
 
-	"github.com/hashicorp/terraform-provider-azuread/version"
 	"log"
+
+	"github.com/hashicorp/terraform-provider-azuread/version"
 
 	"github.com/hashicorp/terraform-provider-azuread/internal/provider"
 )

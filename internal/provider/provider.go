@@ -298,12 +298,11 @@ func providerConfigure(p *schema.Provider) schema.ConfigureContextFunc {
 			return nil, pluginsdk.DiagFromErr(err)
 		}
 
-		//envName, ok := d.GetOk("environment").(string)
 		var (
 			env *environments.Environment
 
 			envName      = "global"
-			metadataHost string //= d.Get("metadata_host").(string)
+			metadataHost string
 		)
 
 		if v, ok := d.GetOk("environment"); ok {
