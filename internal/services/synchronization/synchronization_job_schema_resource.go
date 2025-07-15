@@ -272,6 +272,7 @@ func (r *SynchronizationJobSchemaResource) Schema(ctx context.Context, req resou
 }
 
 func (r *SynchronizationJobSchemaResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("synchronization_job_id"), req.ID)...)
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
