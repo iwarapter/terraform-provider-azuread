@@ -4,10 +4,12 @@
 package provider
 
 import (
+	"cmp"
 	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-provider-azuread/internal/helpers/tf/pluginsdk"
@@ -39,10 +41,40 @@ func decodeCertificate(clientCertificate string) ([]byte, error) {
 	return pfx, nil
 }
 
-func getOidcToken(d *pluginsdk.ResourceData) (*string, error) {
-	idToken := d.Get("oidc_token").(string)
+func hasStateOrEnvOrDefault(d *pluginsdk.ResourceData, env, key, def string) string {
+	if v, ok := d.GetOk(key); ok {
+		return v.(string)
+	} else if s, ok := os.LookupEnv(env); ok {
+		return s
+	}
+	return def
+}
 
-	if path := d.Get("oidc_token_file_path").(string); path != "" {
+func hasStateOrEnvOrDefaultBool(d *pluginsdk.ResourceData, env, key string, def bool) bool {
+	if v, ok := d.GetOk(key); ok {
+		return v.(bool)
+	} else if s, ok := os.LookupEnv(env); ok {
+		b, _ := strconv.ParseBool(s)
+		return b
+	}
+	return def
+}
+
+func hasStateOrMultiEnvOrDefault(d *pluginsdk.ResourceData, key, def string, envs ...string) string {
+	if v, ok := d.GetOk(key); ok {
+		return v.(string)
+	}
+	values := make([]string, len(envs))
+	for i, v := range envs {
+		values[i] = os.Getenv(v)
+	}
+	return cmp.Or(append(values, def)...)
+}
+
+func getOidcToken(d *pluginsdk.ResourceData) (*string, error) {
+	idToken := hasStateOrEnvOrDefault(d, "ARM_OIDC_TOKEN", "oidc_token", "")
+
+	if path := hasStateOrEnvOrDefault(d, "ARM_OIDC_TOKEN_FILE_PATH", "oidc_token_file_path", ""); path != "" {
 		fileTokenRaw, err := os.ReadFile(path)
 
 		if err != nil {
@@ -62,9 +94,9 @@ func getOidcToken(d *pluginsdk.ResourceData) (*string, error) {
 }
 
 func getClientId(d *pluginsdk.ResourceData) (*string, error) {
-	clientId := strings.TrimSpace(d.Get("client_id").(string))
+	clientId := hasStateOrEnvOrDefault(d, "ARM_CLIENT_ID", "client_id", "")
 
-	if path := d.Get("client_id_file_path").(string); path != "" {
+	if path := hasStateOrEnvOrDefault(d, "ARM_CLIENT_ID_FILE_PATH", "client_id_file_path", ""); path != "" {
 		fileClientIdRaw, err := os.ReadFile(path)
 
 		if err != nil {
@@ -84,9 +116,9 @@ func getClientId(d *pluginsdk.ResourceData) (*string, error) {
 }
 
 func getClientSecret(d *pluginsdk.ResourceData) (*string, error) {
-	clientSecret := strings.TrimSpace(d.Get("client_secret").(string))
+	clientSecret := hasStateOrEnvOrDefault(d, "ARM_CLIENT_SECRET", "client_secret", "")
 
-	if path := d.Get("client_secret_file_path").(string); path != "" {
+	if path := hasStateOrEnvOrDefault(d, "ARM_CLIENT_SECRET_FILE_PATH", "client_secret_file_path", ""); path != "" {
 		fileSecretRaw, err := os.ReadFile(path)
 
 		if err != nil {
@@ -106,9 +138,9 @@ func getClientSecret(d *pluginsdk.ResourceData) (*string, error) {
 }
 
 func getTenantId(d *pluginsdk.ResourceData) (*string, error) {
-	tenantId := strings.TrimSpace(d.Get("tenant_id").(string))
+	tenantId := strings.TrimSpace(hasStateOrEnvOrDefault(d, "ARM_TENANT_ID", "tenant_id", ""))
 
-	if d.Get("use_aks_workload_identity").(bool) && os.Getenv("AZURE_TENANT_ID") != "" {
+	if hasStateOrEnvOrDefaultBool(d, "ARM_USE_AKS_WORKLOAD_IDENTITY", "use_aks_workload_identity", false) && os.Getenv("AZURE_TENANT_ID") != "" {
 		aksTenantId := os.Getenv("AZURE_TENANT_ID")
 		if tenantId != "" && tenantId != aksTenantId {
 			return nil, fmt.Errorf("mismatch between supplied Tenant ID and that provided by AKS Workload Identity - please remove, ensure they match, or disable use_aks_workload_identity")
