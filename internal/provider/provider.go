@@ -269,6 +269,7 @@ func AzureADProvider() *schema.Provider {
 
 func providerConfigure(p *schema.Provider) schema.ConfigureContextFunc {
 	return func(ctx context.Context, d *pluginsdk.ResourceData) (interface{}, pluginsdk.Diagnostics) {
+
 		var certData []byte
 		if encodedCert := d.Get("client_certificate").(string); encodedCert != "" {
 			var err error
@@ -334,8 +335,12 @@ func providerConfigure(p *schema.Provider) schema.ConfigureContextFunc {
 			return nil, pluginsdk.DiagErrorf("Microsoft Graph endpoint could not be determined for the specified environment")
 		}
 
+		enableAzureCli := true
+		if v, ok := d.GetOk("use_cli"); ok {
+			enableAzureCli = v.(bool)
+		}
+
 		var (
-			enableAzureCli        = d.Get("use_cli").(bool)
 			enableManagedIdentity = d.Get("use_msi").(bool)
 			enableOidc            = d.Get("use_oidc").(bool) || d.Get("use_aks_workload_identity").(bool)
 		)
