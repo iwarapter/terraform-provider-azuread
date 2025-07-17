@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+
 	"github.com/hashicorp/go-azure-sdk/sdk/auth"
 	"github.com/hashicorp/go-azure-sdk/sdk/environments"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
