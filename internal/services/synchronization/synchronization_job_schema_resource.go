@@ -315,7 +315,7 @@ func (r *SynchronizationJobSchemaResource) Create(ctx context.Context, req resou
 	}
 
 	schemaData.Directories = getSchema.Model.Directories
-	(*schemaData.SynchronizationRules)[0].Id = (*getSchema.Model.SynchronizationRules)[0].Id
+	setMetadata(getSchema, schemaData)
 
 	_, err = client.UpdateSynchronizationJobSchema(ctx, *synchronizationJobId, schemaData, synchronizationjobschema.DefaultUpdateSynchronizationJobSchemaOperationOptions())
 	if err != nil {
@@ -330,6 +330,33 @@ func (r *SynchronizationJobSchemaResource) Create(ctx context.Context, req resou
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+}
+
+// sets the metadata for each rule and object mapping if not provided
+func setMetadata(getSchema synchronizationjobschema.GetSynchronizationJobSchemaOperationResponse, schemaData stable.SynchronizationSchema) {
+	for i, responseRule := range *getSchema.Model.SynchronizationRules {
+		for _, rule := range *schemaData.SynchronizationRules {
+			if !rule.Name.IsNull() && !responseRule.Name.IsNull() {
+				if rule.Name.GetOrZero() == responseRule.Name.GetOrZero() {
+					if (*schemaData.SynchronizationRules)[i].Id.IsNull() {
+						(*schemaData.SynchronizationRules)[i].Id = responseRule.Id
+					}
+					if (*schemaData.SynchronizationRules)[i].Metadata == nil {
+						(*schemaData.SynchronizationRules)[i].Metadata = responseRule.Metadata
+					}
+					for idx, mapping := range *(*schemaData.SynchronizationRules)[i].ObjectMappings {
+						for _, dataMapping := range *rule.ObjectMappings {
+							if !mapping.Name.IsNull() && !dataMapping.Name.IsNull() && mapping.Name.GetOrZero() == dataMapping.Name.GetOrZero() {
+								if (*(*schemaData.SynchronizationRules)[i].ObjectMappings)[idx].Metadata == nil {
+									(*(*schemaData.SynchronizationRules)[i].ObjectMappings)[idx].Metadata = dataMapping.Metadata
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 func (r *SynchronizationJobSchemaResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -421,7 +448,7 @@ func (r *SynchronizationJobSchemaResource) Update(ctx context.Context, req resou
 	}
 
 	schemaData.Directories = getSchema.Model.Directories
-	(*schemaData.SynchronizationRules)[0].Id = (*getSchema.Model.SynchronizationRules)[0].Id
+	setMetadata(getSchema, schemaData)
 
 	_, err = client.UpdateSynchronizationJobSchema(ctx, *synchronizationJobId, schemaData, synchronizationjobschema.DefaultUpdateSynchronizationJobSchemaOperationOptions())
 	if err != nil {
